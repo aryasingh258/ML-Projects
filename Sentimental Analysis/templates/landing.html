@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Sentiment Analysis</title>
+</head>
+<body>
+    <div class="container">
+        <h1>Sentiment Analysis</h1>
+        <form id="text-form" action="/predict" method="POST">
+            <textarea name="text" rows="10" cols="50" placeholder="Enter text here..."></textarea><br>
+            <button type="submit">Analyze Sentiment</button>
+        </form>
+
+        <form id="file-form" action="/predict" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file"><br><br>
+            <button type="submit">Upload File and Analyze Sentiment</button>
+        </form>
+
+        <div id="result"></div>
+        <div id="graph"></div>
+    </div>
+</body>
+<script>
+document.getElementById('text-form').onsubmit = async function(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const text = formData.get('text');
+
+    try {
+        const response = await fetch('/predict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text }),
+        });
+
+        const result = await response.json();
+        document.getElementById('result').textContent = 'Sentiment: ' + result.prediction;
+    } catch (error) {
+        document.getElementById('result').textContent = 'Error: ' + error.message;
+    }
+};
+
+document.getElementById('file-form').onsubmit = async function(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch('/predict', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (response.headers.get('X-Graph-Exists') === 'true') {
+            const graphData = response.headers.get('X-Graph-Data');
+            const graph = document.createElement('img');
+            graph.src = 'data:image/png;base64,' + graphData;
+            document.getElementById('graph').appendChild(graph);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Predictions.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (error) {
+        document.getElementById('result').textContent = 'Error: ' + error.message;
+    }
+};
+</script>
+</html>
